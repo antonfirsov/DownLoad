@@ -24,17 +24,6 @@ namespace DownLoad.Server
                     bool http2 = args.Any(a => a.ToLower().Contains("http2"));
                     webBuilder
                         .UseStartup<Startup>()
-                        .UseKestrel(options =>
-                        {
-                            if (http2)
-                            {
-                                options.ListenLocalhost(5001);
-                            }
-                            else
-                            {
-                                options.ListenLocalhost(5000);
-                            }
-                        })
                         .ConfigureKestrel(options =>
                         {
                             if (http2)
