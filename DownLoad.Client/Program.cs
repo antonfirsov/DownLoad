@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
 namespace DownLoad.Client
@@ -16,8 +17,16 @@ namespace DownLoad.Client
                 lengthMb = 5;
             }
 
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                await TestHandler("WinHttpHandler HTTP 1.1", new WinHttpHandler(), hostName, false, lengthMb);
+                
+                // H2 fails with ERROR_WINHTTP_INVALID_SERVER_RESPONSE
+                //await TestHandler("WinHttpHandler HTTP 2.0", new WinHttpHandler(), hostName, true, lengthMb);
+            }
+
             await TestHandler("SocketsHttpHandler HTTP 1.1", new SocketsHttpHandler(), hostName, false, lengthMb);
-            await TestHandler("SocketsHttpHandler HTTP 2.0", new SocketsHttpHandler(), hostName, true, lengthMb);
+            await TestHandler("SocketsHttpHandler HTTP 2.0", new SocketsHttpHandler(), hostName, true, lengthMb);   
         }
 
         static async Task TestHandler(string info, HttpMessageHandler handler, string hostName, bool http2, int lengthMb)
