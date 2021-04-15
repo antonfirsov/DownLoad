@@ -9,17 +9,22 @@ namespace DownLoad.Client
     {
         static async Task Main(string[] args)
         {
-            string hostName = args.Length>0 ? args[0] : "anfirszo-ubuntu-01";
+            string hostName = args.Length > 0 ? args[0] : "anfirszo-ubuntu-01";
 
-            await TestHandler("SocketsHttpHandler HTTP 1.1", new SocketsHttpHandler(), hostName, false, 10);
-            await TestHandler("SocketsHttpHandler HTTP 2.0", new SocketsHttpHandler(), hostName, true, 10);
+            if (args.Length <= 1 || !int.TryParse(args[1], out int lengthMb))
+            {
+                lengthMb = 5;
+            }
+
+            await TestHandler("SocketsHttpHandler HTTP 1.1", new SocketsHttpHandler(), hostName, false, lengthMb);
+            await TestHandler("SocketsHttpHandler HTTP 2.0", new SocketsHttpHandler(), hostName, true, lengthMb);
         }
 
         static async Task TestHandler(string info, HttpMessageHandler handler, string hostName, bool http2, int lengthMb)
         {
             using var client = new HttpClient(handler, true);
             var message = GenerateRequestMessage(hostName, http2, lengthMb);
-            Console.WriteLine($"{info} / {lengthMb} MB ...");
+            Console.WriteLine($"{info} / {lengthMb} MB from {hostName}");
             Stopwatch sw = Stopwatch.StartNew();
             var response = await client.SendAsync(message);
             long elapsedMs = sw.ElapsedMilliseconds;
