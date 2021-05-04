@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
     using System.Runtime.InteropServices;
@@ -14,6 +15,8 @@ namespace DownLoad.Server
 {
     public class Startup
     {
+        private static readonly Random _random = new Random(123456);
+
         // This method gets called by the runtime. Use this method to add services to the container.
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
@@ -32,8 +35,27 @@ namespace DownLoad.Server
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapGet("/", WriteResponse);
+                endpoints.MapGet("/", WriteLargeData);
+
+                endpoints.MapGet("/sendBytes", WriteRandomData);
             });
+        }
+
+        private static async Task WriteRandomData(HttpContext context)
+        {
+            Console.WriteLine($"Query string: {context.Request.QueryString}");
+            var length = Int32.Parse(context.Request.Query["length"]);
+            Console.WriteLine($"Length: {length}");
+            var byteArray = ArrayPool<byte>.Shared.Rent(length);
+            try
+            {
+                _random.NextBytes(byteArray);
+                await context.Response.WriteAsync(Convert.ToBase64String(byteArray));
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(byteArray);
+            }
         }
 
         private static Lazy<byte[]> DataLazy = new Lazy<byte[]>(() =>
@@ -51,7 +73,7 @@ namespace DownLoad.Server
             return data;
         });
 
-        private static async Task WriteResponse(HttpContext ctx)
+        private static async Task WriteLargeData(HttpContext ctx)
         {
             byte[] data = DataLazy.Value;
             ctx.Response.ContentType = "text/plain; charset=us-ascii";
