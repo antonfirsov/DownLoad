@@ -10,22 +10,22 @@ namespace DownLoad.Client
     {
         static async Task Main(string[] args)
         {
-            string hostName = args.Length > 0 ? args[0] : "anfirszo-ubuntu-01";
+            string hostName = args.Length > 0 ? args[0] : "10.194.114.94";
 
             if (args.Length <= 1 || !int.TryParse(args[1], out int lengthMb))
             {
                 lengthMb = 5;
             }
 
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                await TestHandler("WinHttpHandler HTTP 1.1", new WinHttpHandler(), hostName, false, lengthMb);
+            //if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            //{
+            //    await TestHandler("WinHttpHandler HTTP 1.1", new WinHttpHandler(), hostName, false, lengthMb);
                 
-                // H2 fails with ERROR_WINHTTP_INVALID_SERVER_RESPONSE
-                //await TestHandler("WinHttpHandler HTTP 2.0", new WinHttpHandler(), hostName, true, lengthMb);
-            }
+            //    // H2 fails with ERROR_WINHTTP_INVALID_SERVER_RESPONSE
+            //    //await TestHandler("WinHttpHandler HTTP 2.0", new WinHttpHandler(), hostName, true, lengthMb);
+            //}
 
-            await TestHandler("SocketsHttpHandler HTTP 1.1", new SocketsHttpHandler(), hostName, false, lengthMb);
+            //await TestHandler("SocketsHttpHandler HTTP 1.1", new SocketsHttpHandler(), hostName, false, lengthMb);
             await TestHandler("SocketsHttpHandler HTTP 2.0", new SocketsHttpHandler(), hostName, true, lengthMb);   
         }
 
