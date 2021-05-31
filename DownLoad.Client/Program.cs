@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Net.Http;
+using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
@@ -17,6 +18,14 @@ namespace DownLoad.Client
                 lengthMb = 5;
             }
 
+            int sep = hostName.IndexOf(':');
+            int port = -1;
+            if (sep >= 0){
+                string portStr = hostName.Substring(sep + 1, hostName.Length - sep - 1);
+                hostName = hostName.Substring(0, sep);
+                port = int.Parse(portStr);
+            }
+
             //if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             //{
             //    await TestHandler("WinHttpHandler HTTP 1.1", new WinHttpHandler(), hostName, false, lengthMb);
@@ -26,14 +35,15 @@ namespace DownLoad.Client
             //}
 
             //await TestHandler("SocketsHttpHandler HTTP 1.1", new SocketsHttpHandler(), hostName, false, lengthMb);
-            await TestHandler("SocketsHttpHandler HTTP 2.0", new SocketsHttpHandler(), hostName, true, lengthMb);   
+
+            await TestHandler("SocketsHttpHandler HTTP 2.0", new SocketsHttpHandler(), hostName, true, lengthMb, port);   
         }
 
-        static async Task TestHandler(string info, HttpMessageHandler handler, string hostName, bool http2, int lengthMb)
+        static async Task TestHandler(string info, HttpMessageHandler handler, string hostName, bool http2, int lengthMb, int port = -1)
         {
             using var client = new HttpClient(handler, true);
-            var message = GenerateRequestMessage(hostName, http2, lengthMb);
-            Console.WriteLine($"{info} / {lengthMb} MB from {hostName}");
+            var message = GenerateRequestMessage(hostName, http2, lengthMb, ref port);
+            Console.WriteLine($"{info} / {lengthMb} MB from {hostName}:{port}");
             Stopwatch sw = Stopwatch.StartNew();
             var response = await client.SendAsync(message);
             long elapsedMs = sw.ElapsedMilliseconds;
@@ -41,9 +51,14 @@ namespace DownLoad.Client
             Console.WriteLine($"{info}: {response.StatusCode} in {elapsedMs} ms");
         }
             
-        static HttpRequestMessage GenerateRequestMessage(string hostName, bool http2, int lengthMb = 25)
+        static HttpRequestMessage GenerateRequestMessage(string hostName, bool http2, int lengthMb, ref int port)
         {
-            string url = $"http://{hostName}:{(http2 ? "5001" : "5000")}?lengthMb={lengthMb}";
+            if (port < 0)
+            {
+                port = http2 ? 5001 : 5000;                
+            }
+
+            string url = $"http://{hostName}:{port}?lengthMb={lengthMb}";
             var msg = new HttpRequestMessage(HttpMethod.Get, url)
             {
                 Version = new Version(1, 1)
