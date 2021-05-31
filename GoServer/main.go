@@ -2,6 +2,9 @@ package main
 
 import (
     "fmt"
+	"bytes"
+	"strconv"
+	"io"
     "golang.org/x/net/http2"
     "golang.org/x/net/http2/h2c"
     "net"
@@ -23,13 +26,38 @@ func main() {
     //H2CServerPrior()
 }
 
+func get64KbString() string {
+	var b bytes.Buffer
+
+	for i := 0; i < 1000; i++ {
+		b.WriteString("qwertzuiopasdfghjklyxcvbnm1234567890QWERTZUIOPASDFGHJKLYXCVBNM!!")
+	}
+
+	return b.String()
+}
+
 // This server supports "H2C upgrade" and "H2C prior knowledge" along with
 // standard HTTP/2 and HTTP/1.1 that golang natively supports.
 func H2CServerUpgrade() {
     h2s := &http2.Server{}
 
+    var largeStr = get64KbString()
+
     handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        fmt.Fprintf(w, "Hello, %v, http: %v", r.URL.Path, r.TLS == nil)
+		var lengthMbStr = r.URL.Query().Get("lengthMb")
+		var lengthMb, err = strconv.Atoi(lengthMbStr)
+		if err != nil {
+			fmt.Printf("Atoi failed")
+			return
+		}
+		
+        //fmt.Fprintf(w, "Hello, %v, H2C: %v, lengthMb: %v", r.URL.Path, r.TLS == nil, lengthMb)
+
+		fmt.Printf("Hello, %v, H2C: %v, lengthMb: %v", r.URL.Path, r.TLS == nil, lengthMb)
+
+		for i := 0; i < lengthMb * 1024 / 64; i++ {
+			io.WriteString(w, largeStr)
+		}
     })
 
     server := &http.Server{
@@ -37,7 +65,7 @@ func H2CServerUpgrade() {
         Handler: h2c.NewHandler(handler, h2s),
     }
 
-    fmt.Printf("Listening [0.0.0.0:1010]...\n")
+    fmt.Printf("Listening ...\n")
     checkErr(server.ListenAndServe(), "while listening")
 }
 
