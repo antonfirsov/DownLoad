@@ -11,6 +11,9 @@ namespace DownLoad.Client
     {
         static async Task Main(string[] args)
         {
+            //AppContext.SetSwitch("System.Net.SocketsHttpHandler.Http2FlowControl.DisableDynamicWindowSizing", true);
+            await Console.Out.WriteLineAsync(typeof(HttpClient).Assembly.Location);
+
             string hostName = args.Length > 0 ? args[0] : "10.194.114.94";
 
             if (args.Length <= 1 || !int.TryParse(args[1], out int lengthMb))

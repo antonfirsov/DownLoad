@@ -36,27 +36,9 @@ namespace DownLoad.Server
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapGet("/", WriteLargeData);
-
-                endpoints.MapGet("/sendBytes", WriteRandomData);
             });
         }
 
-        private static async Task WriteRandomData(HttpContext context)
-        {
-            Console.WriteLine($"Query string: {context.Request.QueryString}");
-            var length = Int32.Parse(context.Request.Query["length"]);
-            Console.WriteLine($"Length: {length}");
-            var byteArray = ArrayPool<byte>.Shared.Rent(length);
-            try
-            {
-                _random.NextBytes(byteArray);
-                await context.Response.WriteAsync(Convert.ToBase64String(byteArray));
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(byteArray);
-            }
-        }
 
         private static Lazy<byte[]> DataLazy = new Lazy<byte[]>(() =>
         {
@@ -78,19 +60,24 @@ namespace DownLoad.Server
             byte[] data = DataLazy.Value;
             ctx.Response.ContentType = "text/plain; charset=us-ascii";
             
-            string? lengthStr = ctx.Request.Query["lengthMb"].FirstOrDefault();
-            if (!double.TryParse(lengthStr, out double lengthMb)) lengthMb = 0.1;
+            string? lengthStr = ctx.Request.Query["length"].FirstOrDefault();
+            if (!int.TryParse(lengthStr, out int length))
+            {
+                lengthStr = ctx.Request.Query["lengthMb"].FirstOrDefault();
+                if (!double.TryParse(lengthStr, out double lengthMb)) lengthMb = 0.1;
 
-            int length = (int)(1024 * 1024 * lengthMb);
+                length = (int)(1024 * 1024 * lengthMb);
+            }
 
-            int times = length / data.Length;
-            ctx.Response.ContentLength = times * data.Length;
-            ctx.Response.Headers.Add("Content-Disposition", $"attachment; filename = \"_DL_{lengthMb}_{Guid.NewGuid()}.txt\"");
+            ctx.Response.ContentLength = length;
+            ctx.Response.Headers.Add("Content-Disposition", $"attachment; filename = \"_DL_{length}_{Guid.NewGuid()}.txt\"");
             ctx.Response.Headers.Add("Protocol-FYI", ctx.Request.Protocol);
 
-            for (int i = 0; i < times; i++)
+            for (int remaining = length; remaining > 0;)
             {
-                await ctx.Response.Body.WriteAsync(data);
+                int toWrite = Math.Min(remaining, data.Length);
+                await ctx.Response.Body.WriteAsync(data.AsMemory(0, toWrite));
+                remaining -= toWrite;
             }
                       
             await ctx.Response.Body.FlushAsync();
